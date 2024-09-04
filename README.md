@@ -22,8 +22,14 @@ poetry run python manage.py migrate
 poetry run python manage.py startapp houses
 ```
 
-# 장고 마이그레이션s
+# 장고 마이그레이션
 
 ```shell
 poetry run python manage.py makemigrations
+```
+
+# 장고 최고관리자 만들기
+
+```shell
+python manage.py createsuperuser
 ```
