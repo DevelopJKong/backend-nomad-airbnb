@@ -9,7 +9,9 @@ class House(models.Model):
     price = models.PositiveIntegerField()
     description = models.TextField()
     address = models.CharField(max_length=140)
-    pets_allowed = models.BooleanField(default=True)
+    pets_allowed = models.BooleanField(
+        verbose_name="Pets allowed?",
+        default=True, help_text="Is pet allowed?")
 
 
 def __str__(self):
