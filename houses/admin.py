@@ -7,4 +7,4 @@ class HouseAdmin(admin.ModelAdmin):
     list_display = ("name", "price", "address", "pets_allowed")
     list_filter = ("price", "pets_allowed")
     # search_fields = ["name", "address__startswith"]
-    search_fields = ("name",)
+    # search_fields = ("name",)
