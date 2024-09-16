@@ -39,7 +39,6 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
-
 AUTH_USER_MODEL = 'users.User'
 
 INSTALLED_APPS = [
@@ -51,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users.apps.UsersConfig',
     'rooms.apps.RoomsConfig',
+    'common.apps.CommonConfig',
 ]
 
 MIDDLEWARE = [
