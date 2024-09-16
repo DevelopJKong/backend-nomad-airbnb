@@ -26,6 +26,9 @@ class Room(CommonModel):
     amenities = models.ManyToManyField(
         "Amenity", related_name="rooms", blank=True)
 
+    category = models.ForeignKey(
+        "categories.Category", on_delete=models.SET_NULL, null=True, blank=True)
+
     def __str__(self):
         return self.name
 

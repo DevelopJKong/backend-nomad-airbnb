@@ -18,6 +18,9 @@ class Experience(CommonModel):
     perks = models.ManyToManyField(
         "Perk", related_name="experiences", blank=True)
 
+    category = models.ForeignKey(
+        "categories.Category", on_delete=models.SET_NULL, null=True, blank=True)
+
     def __str__(self):
         return self.name
 

@@ -10,14 +10,11 @@ class ExperienceAdmin(admin.ModelAdmin):
         "name",
         "price",
         "start",
-        "end"
+        "end",
     )
 
     list_filter = (
-        "city",
-        "price",
-        "host",
-        "perks",
+        "category",
     )
 
 
