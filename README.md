@@ -10,7 +10,11 @@ poetry shell
 poetry run python manage.py runserver
 ```
 
-# 장고 마이그레이션poetry run python manage.py migrate
+# 장고 마이그레이션 적용
+
+```shell
+poetry run python manage.py migrate
+```
 
 # 장고 마이그레이션
 

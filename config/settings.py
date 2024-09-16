@@ -39,7 +39,6 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
-CUSTOM_APPS = ["users.apps.UsersConfig"]
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -51,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'users.apps.UsersConfig',
+    'rooms.apps.RoomsConfig',
 ]
 
 MIDDLEWARE = [
