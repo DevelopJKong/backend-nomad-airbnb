@@ -11,5 +11,5 @@ class ReviewAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
-        "rating"
+        "rating",
     )
