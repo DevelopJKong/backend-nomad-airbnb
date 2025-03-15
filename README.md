@@ -1,12 +1,30 @@
+# poetry 설치
+
+https://python-poetry.org/docs/#installing-with-the-official-installer
+
+```shell
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
 # 터미널 실행
 
 ```shell
+# poetry 2.0.0 이하
 poetry shell
+
+# poetry 2.0.0 이후
+poetry env activate
+poetry env info
+poetry env list
+poetry env remove
+poetry env use
 ```
 
 # 장고 실행
 
 ```shell
+poetry install
+poetry install --no-root
 poetry run python manage.py runserver
 ```
 
