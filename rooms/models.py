@@ -21,10 +21,10 @@ class Room(CommonModel):
     address = models.CharField(max_length=255)
     pet_friendly = models.BooleanField(default=True)
     kind = models.CharField(max_length=20, choices=RoomKindChoices.choices, default=RoomKindChoices.ENTIRE_PLACE)
-    owner = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    # 관계 설정
+    owner = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='rooms')
     amenities = models.ManyToManyField('Amenity', related_name='rooms', blank=True)
-
-    category = models.ForeignKey('categories.Category', on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey('categories.Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='rooms')
 
     def __str__(self):
         return self.name

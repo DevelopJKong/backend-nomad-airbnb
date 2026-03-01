@@ -10,9 +10,11 @@ class Review(CommonModel):
 
     payload = models.TextField()
     rating = models.PositiveIntegerField()
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    room = models.ForeignKey('rooms.Room', on_delete=models.CASCADE, null=True, blank=True)
-    experience = models.ForeignKey('experiences.Experience', on_delete=models.CASCADE, null=True, blank=True)
+
+    # 관계 설정
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='reviews')
+    room = models.ForeignKey('rooms.Room', on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
+    experience = models.ForeignKey('experiences.Experience', on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
 
     def __str__(self):
         return f'{self.room} / {self.rating}'
