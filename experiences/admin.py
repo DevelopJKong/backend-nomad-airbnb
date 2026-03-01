@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import Experience
-from .models import Perk
+
+from .models import Experience, Perk
 
 
 @admin.register(Experience)

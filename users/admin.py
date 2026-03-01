@@ -1,6 +1,6 @@
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+
 from .models import User
 
 # Register your models here.
@@ -10,36 +10,41 @@ from .models import User
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (
-            "Profile",
+            'Profile',
             {
-                "fields": (
-                    "avatar",
-                    "username",
-                    "password",
-                    "name",
-                    "email",
-                    "is_host",
-                    "gender",
-                    "language",
-                    "currency",
+                'fields': (
+                    'avatar',
+                    'username',
+                    'password',
+                    'name',
+                    'email',
+                    'is_host',
+                    'gender',
+                    'language',
+                    'currency',
                 ),
-                "classes": ("wide",),
+                'classes': ('wide',),
             },
         ),
         (
-            "Permissions",
+            'Permissions',
             {
-                "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
-                "classes": ("collapse",),
+                'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+                'classes': ('collapse',),
             },
         ),
         (
-            "Important dates",
+            'Important dates',
             {
-                "fields": ("last_login", "date_joined"),
-                "classes": ("collapse",),
+                'fields': ('last_login', 'date_joined'),
+                'classes': ('collapse',),
             },
         ),
     )
 
-    list_display = ("username", "email", "name", "is_host", )
+    list_display = (
+        'username',
+        'email',
+        'name',
+        'is_host',
+    )
