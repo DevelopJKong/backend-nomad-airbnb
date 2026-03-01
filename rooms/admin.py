@@ -28,6 +28,11 @@ class RoomAdmin(admin.ModelAdmin):
         'amenities',
     )
 
+    # 아무것도 적어주지 않으면 contains 검색
+    # ^ 로 시작하는 검색
+    # = 정확히 일치하는 검색
+    search_fields = ('name', 'price', 'owner__username')
+
 
 @admin.register(Amenity)
 class AmenityAdmin(admin.ModelAdmin):
