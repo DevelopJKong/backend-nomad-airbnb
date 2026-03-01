@@ -1,18 +1,14 @@
-[tool.poetry]
-authors = ["cafe small house <ybaram40@gmail.com>"]
+[project]
+authors = [{name = "cafe small house", email = "ybaram40@gmail.com"}]
+dependencies = [
+  "django>=4.2.5,<5",
+  "environs>=11.0.0,<12",
+  "pillow>=10.4.0,<11",
+  "psycopg2>=2.9.9,<3",
+]
 description = ""
 license = "MIT"
 name = "airbnb"
 readme = "README.md"
+requires-python = ">=3.11"
 version = "0.1.0"
-
-[tool.poetry.dependencies]
-django = "^4.2.5"
-environs = "^11.0.0"
-pillow = "^10.4.0"
-psycopg2 = "^2.9.9"
-python = "^3.11"
-
-[build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core"]

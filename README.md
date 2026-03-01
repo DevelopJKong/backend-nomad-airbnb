@@ -1,59 +1,61 @@
-# poetry 설치
+# uv 설치
 
-https://python-poetry.org/docs/#installing-with-the-official-installer
+https://docs.astral.sh/uv/getting-started/installation/
 
 ```shell
-curl -sSL https://install.python-poetry.org | python3 -
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-# 터미널 실행
+# 가상환경 & 의존성 설치
 
 ```shell
-# poetry 2.0.0 이하
-poetry shell
+uv sync
+```
 
-# poetry 2.0.0 이후
-poetry env activate
-poetry env info
-poetry env list
-poetry env remove
-poetry env use
+# 가상환경 활성화
+
+```shell
+source .venv/bin/activate
+```
+
+# 장고 프로젝트 만들기
+
+```shell
+uv run django-admin startproject config .
 ```
 
 # 장고 실행
 
 ```shell
-poetry install
-poetry install --no-root
-poetry run python manage.py runserver
+uv run python manage.py runserver
 ```
 
 # 장고 마이그레이션 적용
 
 ```shell
-poetry run python manage.py migrate
+uv run python manage.py migrate
 ```
 
 # 장고 마이그레이션
 
 ```shell
-poetry run python manage.py makemigrations
+uv run python manage.py makemigrations
 ```
 
 # 장고 최고관리자 만들기
 
 ```shell
-poetry run python manage.py createsuperuser
+uv run python manage.py createsuperuser
 ```
 
 # 장고 startapp
 
 ```shell
-poetry run python manage.py startapp houses
+uv run python manage.py startapp houses
 ```
 
 # 장고 유저 만들기
 
 ```shell
-poetry run python manage.py startapp users
+uv run python manage.py startapp users
 ```
