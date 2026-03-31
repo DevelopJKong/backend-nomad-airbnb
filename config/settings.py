@@ -42,6 +42,10 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'users.User'
 
+THIRD_PARTY_APPS = [
+    'rest_framework',
+]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -59,6 +63,7 @@ INSTALLED_APPS = [
     'bookings.apps.BookingsConfig',
     'medias.apps.MediasConfig',
     'direct_messages.apps.DirectMessagesConfig',
+    *THIRD_PARTY_APPS,
 ]
 
 MIDDLEWARE = [
