@@ -1,2 +1,8 @@
 <h1>hi all rooms</h1>
 <h2>{{ title }}</h2>
+<ul>
+    {% for room in rooms %}
+        <!-- html 주석 -->
+        <li>{{ room.name }} - {{ room.price }}</li>
+    {% endfor %}
+</ul>
