@@ -5,7 +5,7 @@ from .models import Category
 
 class CategorySerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, max_length=50)
-    kind = serializers.CharField(required=True, max_length=15)
+    kind = serializers.ChoiceField(required=True, choices=Category.CategoryKindChoices.choices)
 
     class Meta:
         model = Category
