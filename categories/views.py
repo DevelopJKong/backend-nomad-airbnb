@@ -16,8 +16,9 @@ def categories(request):
     elif request.method == 'POST':
         serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'ok': True, 'category': serializer.data}, status=status.HTTP_201_CREATED)
+            new_category = serializer.save()
+            category_serializer = CategorySerializer(new_category).data
+            return Response({'ok': True, 'category': category_serializer}, status=status.HTTP_201_CREATED)
         else:
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
