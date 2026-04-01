@@ -23,7 +23,7 @@ def categories(request):
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def category(request, pk):
     try:
         category = Category.objects.get(pk=pk)
@@ -41,3 +41,6 @@ def category(request, pk):
             return Response({'ok': True, 'category': category_serializer})
         else:
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        category.delete()
+        return Response({'ok': True}, status=status.HTTP_204_NO_CONTENT)
