@@ -23,8 +23,21 @@ def categories(request):
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view()
+@api_view(['GET', 'PUT'])
 def category(request, pk):
-    category = Category.objects.get(pk=pk)
-    serializer = CategorySerializer(category)
-    return Response({'ok': True, 'category': serializer.data})
+    try:
+        category = Category.objects.get(pk=pk)
+    except Category.DoesNotExist:
+        return Response({'ok': False, 'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = CategorySerializer(category)
+        return Response({'ok': True, 'category': serializer.data})
+    elif request.method == 'PUT':
+        serializer = CategorySerializer(category, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_category = serializer.save()
+            category_serializer = CategorySerializer(updated_category).data
+            return Response({'ok': True, 'category': category_serializer})
+        else:
+            return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
