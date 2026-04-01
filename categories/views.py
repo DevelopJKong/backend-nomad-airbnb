@@ -1,19 +1,19 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from categories.serializers import CategorySerializer
 
 from .models import Category
 
 
-@api_view(['GET', 'POST'])
-def categories(request):
-    if request.method == 'GET':
+class Categories(APIView):
+    def get(self, request):
         all_categories = Category.objects.all()
         serializer = CategorySerializer(all_categories, many=True)
         return Response({'ok': True, 'categories': serializer.data})
-    elif request.method == 'POST':
+
+    def post(self, request):
         serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
             new_category = serializer.save()
@@ -23,17 +23,20 @@ def categories(request):
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def category(request, pk):
-    try:
-        category = Category.objects.get(pk=pk)
-    except Category.DoesNotExist:
-        return Response({'ok': False, 'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+class CategoryDetail(APIView):
+    def get_object(self, pk):
+        try:
+            return Category.objects.get(pk=pk)
+        except Category.DoesNotExist:
+            return Response({'ok': False, 'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
+    def get(self, request, pk):
+        category = self.get_object(pk)
         serializer = CategorySerializer(category)
         return Response({'ok': True, 'category': serializer.data})
-    elif request.method == 'PUT':
+
+    def put(self, request, pk):
+        category = self.get_object(pk)
         serializer = CategorySerializer(category, data=request.data, partial=True)
         if serializer.is_valid():
             updated_category = serializer.save()
@@ -41,6 +44,12 @@ def category(request, pk):
             return Response({'ok': True, 'category': category_serializer})
         else:
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == 'DELETE':
+
+    def delete(self, request, pk):
+        category = self.get_object(pk)
         category.delete()
         return Response({'ok': True}, status=status.HTTP_204_NO_CONTENT)
+
+
+category_detail = CategoryDetail.as_view()
+categories = Categories.as_view()
