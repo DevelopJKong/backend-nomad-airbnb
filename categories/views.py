@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.views import Response
+from rest_framework.response import Response
 
 from categories.serializers import CategorySerializer
 
@@ -16,7 +16,7 @@ def categories(request):
     elif request.method == 'POST':
         serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
-            print(serializer.validated_data)
+            serializer.save()
             return Response({'ok': True, 'category': serializer.data}, status=status.HTTP_201_CREATED)
         else:
             return Response({'ok': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
