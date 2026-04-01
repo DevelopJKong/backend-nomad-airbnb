@@ -16,12 +16,3 @@ class CategorySerializer(serializers.ModelSerializer):
         if value not in Category.CategoryKindChoices.values:
             raise serializers.ValidationError('"rooms" 또는 "experiences"만 가능합니다.')
         return value
-
-    def create(self, validated_data):
-        return Category.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.kind = validated_data.get('kind', instance.kind)
-        instance.save()
-        return instance
