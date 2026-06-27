@@ -3,7 +3,7 @@ from django.urls import path
 from ninja import NinjaAPI
 
 from categories.views import router as categories_router
-from rooms.views import router as amenities_router
+from rooms.views import router as rooms_router
 
 api = NinjaAPI(
     version='1.0.0',
@@ -13,7 +13,7 @@ api = NinjaAPI(
     docs_url='/docs',
 )
 api.add_router('/categories/', categories_router, tags=['Categories'])
-api.add_router('/amenities/', amenities_router, tags=['Amenities'])
+api.add_router('/rooms/', rooms_router)
 
 urlpatterns = [
     path('admin/', admin.site.urls),

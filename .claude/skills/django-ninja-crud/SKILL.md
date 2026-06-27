@@ -56,15 +56,22 @@ def get_thing(thing_id: int) -> Thing:
     return get_object_or_404(Thing, pk=thing_id)
 
 def update_thing(thing_id: int, payload: ThingIn) -> Thing:
-    thing = get_object_or_404(Thing, pk=thing_id)
-    for attr, value in payload.dict().items():  # use exclude_unset=True for PATCH-style partial schemas
-        setattr(thing, attr, value)
+    thing: Thing = get_object_or_404(Thing, pk=thing_id)  # annotate: see Typing below
+    thing.name = payload.name           # spell out fields when few/fixed (PUT = full replace)
+    thing.description = payload.description
     thing.save()
     return thing
 
 def delete_thing(thing_id: int) -> None:
-    thing = get_object_or_404(Thing, pk=thing_id)
+    thing: Thing = get_object_or_404(Thing, pk=thing_id)
     thing.delete()
+```
+
+For partial update (PATCH-style), add a `*Patch` schema with all-optional fields and
+loop only over the fields that were sent:
+```python
+for attr, value in payload.dict(exclude_unset=True).items():
+    setattr(thing, attr, value)
 ```
 
 `views.py` — thin controller. Every handler has a Korean `summary=` and a docstring
@@ -111,6 +118,42 @@ api.add_router('/things/', things_router, tags=['Things'])
 ```
 All endpoints live under `path('api/v1/', api.urls)`. Swagger UI: `/api/v1/docs`,
 schema: `/api/v1/openapi.json`. `admin/` stays separate (no version prefix).
+
+### Nested routers (sub-resources)
+
+For a sub-resource (e.g. amenities under rooms), do NOT hardcode the joined path
+(`'/rooms/amenities/'`). Compose routers so the hierarchy is expressed in code:
+```python
+# rooms/views.py
+router = Router()           # rooms top-level router
+amenity_router = Router()   # amenities sub-router (handlers registered on this)
+...
+router.add_router('/amenities/', amenity_router, tags=['Amenities'])
+
+# config/urls.py
+api.add_router('/rooms/', rooms_router)   # -> /api/v1/rooms/amenities/...
+```
+Changing the `rooms` prefix is then a one-line edit and `config/urls.py` stays clean.
+
+## Typing (ORM returns are not `Any`)
+
+`get_object_or_404(Thing, ...)` returns `Any` (Django ships weak type info), so
+`thing.save()` / field access also become `Any`. Two fixes:
+
+- **Per-call (no dependency, default):** annotate the variable —
+  `thing: Thing = get_object_or_404(Thing, pk=thing_id)`. Pure type hint, no runtime cost.
+- **Project-wide (proper fix):** add `django-stubs` so all ORM calls infer correctly:
+  ```bash
+  uv add --dev django-stubs
+  ```
+  ```toml
+  # pyproject.toml
+  [tool.django-stubs]
+  django_settings_module = "config.settings"
+  ```
+  Then `: Thing` annotations are no longer needed for ORM returns.
+
+Use per-call annotations while small; adopt `django-stubs` once ORM type noise grows.
 
 ## Testing (the payoff)
 
