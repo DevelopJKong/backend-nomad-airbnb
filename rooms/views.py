@@ -15,6 +15,15 @@ def get_rooms_list(
     return services.list_rooms()
 
 
+@router.get('/{room_id}', response=RoomOut, summary='숙소 상세 조회')
+def get_room(
+    request,  # pyright: ignore[reportUnusedParameter]
+    room_id: int,
+):
+    """`room_id`에 해당하는 숙소를 반환합니다. 없으면 404."""
+    return services.get_room(room_id)
+
+
 @amenity_router.get('/', response=list[AmenityOut], summary='시설 목록 조회')
 def get_amenities_list(
     request,  # pyright: ignore[reportUnusedParameter]

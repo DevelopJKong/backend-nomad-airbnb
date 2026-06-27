@@ -9,6 +9,10 @@ def list_rooms():
     return Room.objects.select_related('owner', 'category').prefetch_related('amenities').all()
 
 
+def get_room(room_id: int) -> Room:
+    return Room.objects.select_related('owner', 'category').prefetch_related('amenities').get(pk=room_id)
+
+
 def list_amenities():
     return Amenity.objects.all()
 
