@@ -3,17 +3,18 @@ from django.urls import path
 from ninja import NinjaAPI
 
 from categories.views import router as categories_router
+from experiences.views import router as experiences_router
 from rooms.views import router as rooms_router
 
 api = NinjaAPI(
     version='1.0.0',
     title='Airbnb Clone API',
-    description='노마드코더 에어비앤비 클론 백엔드 API 문서입니다.\n\n'
-    'Swagger UI: `/api/v1/docs` · OpenAPI 스키마: `/api/v1/openapi.json`',
+    description='노마드코더 에어비앤비 클론 백엔드 API 문서입니다.\n\nSwagger UI: `/api/v1/docs` · OpenAPI 스키마: `/api/v1/openapi.json`',
     docs_url='/docs',
 )
 api.add_router('/categories/', categories_router, tags=['Categories'])
 api.add_router('/rooms/', rooms_router)
+api.add_router('/experiences/', experiences_router, tags=['Experiences'])
 
 urlpatterns = [
     path('admin/', admin.site.urls),

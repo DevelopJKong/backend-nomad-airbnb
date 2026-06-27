@@ -16,6 +16,7 @@ version = "0.1.0"
 
 [dependency-groups]
 dev = [
+  "django-stubs>=6.0.6",
   "djlint>=1.36.4",
   "ruff>=0.9.0",
 ]
@@ -38,3 +39,12 @@ skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.basedpyright]
+# basedpyright 기본값은 매우 엄격(recommended)해서 Django에 안 맞는 노이즈가 많음.
+# 일반 pyright 수준(standard)으로 낮춰 의미 있는 진단만 남긴다.
+typeCheckingMode = "standard"
+# 미사용 파라미터(예: ninja 핸들러의 request)를 회색 hint 대신 노란색 경고로 표시
+reportUnusedParameter = "warning"
+# Django 모델 Meta 상속을 pyright가 비호환 override로 오판 → 끔
+reportIncompatibleVariableOverride = "none"

@@ -17,13 +17,13 @@ def get_category(pk: int) -> Category:
 
 
 def update_category(pk: int, payload: CategoryPatch) -> Category:
-    category = get_object_or_404(Category, pk=pk)
-    for attr, value in payload.dict(exclude_unset=True).items():
-        setattr(category, attr, value)
+    category: Category = get_object_or_404(Category, pk=pk)
+    category.name = payload.name
+    category.kind = payload.kind
     category.save()
     return category
 
 
 def delete_category(pk: int) -> None:
-    category = get_object_or_404(Category, pk=pk)
+    category: Category = get_object_or_404(Category, pk=pk)
     category.delete()

@@ -1,10 +1,19 @@
+from typing import TYPE_CHECKING
+
 from django.db import models
 
 from common.models import CommonModel
 
+if TYPE_CHECKING:
+    from reviews.models import Review
+
 
 class Room(CommonModel):
     """Room Model Definition"""
+
+    # Review.room 의 related_name='reviews' 역참조 (런타임엔 Django가 자동 제공, 타입 힌트만 명시)
+    if TYPE_CHECKING:
+        reviews: models.Manager['Review']
 
     class RoomKindChoices(models.TextChoices):
         ENTIRE_PLACE = ('entire_place', 'Entire Place')
