@@ -1,16 +1,37 @@
-# Create your views here.
-# from django.shortcuts import render
-from django.http import HttpResponse
-from django.shortcuts import render
+from ninja import Router
 
-from rooms.models import Room
+from . import services
+from .schemas import AmenityIn, AmenityOut
 
-
-def see_all_rooms(request):
-
-    rooms = Room.objects.all()
-    return render(request, 'all_rooms.html', {'rooms': rooms, 'title': 'Hello! this title comes from django!'})
+router = Router()
 
 
-def see_one_room(request, room_id):
-    return HttpResponse(f'one room: {room_id}')
+@router.get('/', response=list[AmenityOut], summary='시설 목록 조회')
+def get_amenities_list(request):
+    """등록된 모든 시설(amenity)을 반환합니다."""
+    return services.list_amenities()
+
+
+@router.post('/', response={201: AmenityOut}, summary='시설 생성')
+def create_amenity(request, payload: AmenityIn):
+    """새 시설을 생성합니다."""
+    return 201, services.create_amenity(payload)
+
+
+@router.get('/{amenity_id}', response=AmenityOut, summary='특정 시설 조회')
+def get_amenity(request, amenity_id: int):
+    """`amenity_id`에 해당하는 시설을 반환합니다. 없으면 404."""
+    return services.get_amenity(amenity_id)
+
+
+@router.put('/{amenity_id}', response=AmenityOut, summary='시설 수정')
+def update_amenity(request, amenity_id: int, payload: AmenityIn):
+    """전달된 필드로 시설을 수정합니다."""
+    return services.update_amenity(amenity_id, payload)
+
+
+@router.delete('/{amenity_id}', response={204: None}, summary='시설 삭제')
+def delete_amenity(request, amenity_id: int):
+    """`amenity_id`에 해당하는 시설을 삭제합니다."""
+    services.delete_amenity(amenity_id)
+    return 204, None
