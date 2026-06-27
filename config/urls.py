@@ -13,7 +13,7 @@ api = NinjaAPI(
     docs_url='/docs',
 )
 api.add_router('/categories/', categories_router, tags=['Categories'])
-api.add_router('/rooms/', rooms_router)
+api.add_router('/rooms/', rooms_router, tags=['Rooms'])
 api.add_router('/experiences/', experiences_router, tags=['Experiences'])
 
 urlpatterns = [

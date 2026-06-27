@@ -1,10 +1,18 @@
 from ninja import Router
 
 from . import services
-from .schemas import AmenityIn, AmenityOut
+from .schemas import AmenityIn, AmenityOut, RoomOut
 
 router = Router()  # rooms 최상위 라우터
 amenity_router = Router()  # amenities 하위 라우터
+
+
+@router.get('/', response=list[RoomOut], summary='숙소 목록 조회')
+def get_rooms_list(
+    request,  # pyright: ignore[reportUnusedParameter]
+):
+    """등록된 모든 숙소를 반환합니다."""
+    return services.list_rooms()
 
 
 @amenity_router.get('/', response=list[AmenityOut], summary='시설 목록 조회')

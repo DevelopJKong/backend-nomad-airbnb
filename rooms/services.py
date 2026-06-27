@@ -1,7 +1,12 @@
 from django.shortcuts import get_object_or_404
 
-from .models import Amenity
+from .models import Amenity, Room
 from .schemas import AmenityIn
+
+
+def list_rooms():
+    # depth=1 중첩 직렬화의 N+1 방지: FK는 select_related, M2M는 prefetch_related
+    return Room.objects.select_related('owner', 'category').prefetch_related('amenities').all()
 
 
 def list_amenities():
