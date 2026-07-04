@@ -57,7 +57,7 @@ def get_thing(thing_id: int) -> Thing:
 
 def update_thing(thing_id: int, payload: ThingIn) -> Thing:
     thing: Thing = get_object_or_404(Thing, pk=thing_id)  # annotate: see Typing below
-    thing.name = payload.name           # spell out fields when few/fixed (PUT = full replace)
+    thing.name = payload.name
     thing.description = payload.description
     thing.save()
     return thing
@@ -67,12 +67,28 @@ def delete_thing(thing_id: int) -> None:
     thing.delete()
 ```
 
-For partial update (PATCH-style), add a `*Patch` schema with all-optional fields and
-loop only over the fields that were sent:
+**Update style rule (user preference):** PUT full-replace services always spell out
+every field explicitly (`thing.name = payload.name`, one line per field), even when
+the model has many fields and it gets long. Do NOT use
+`for attr, value in ...: setattr(thing, attr, value)` loops or `**dict` munging for
+PUT — explicitness beats brevity here. Same for create: prefer explicit kwargs
+(`Thing.objects.create(name=payload.name, ...)`) when the model has FK/M2M fields
+that need per-field handling; `**payload.dict()` is fine only for flat schemas that
+map 1:1 to model fields.
+
+The `setattr` loop is reserved for PATCH-style partial updates ONLY, where the field
+set is dynamic by nature (`*Patch` schema with all-optional fields):
 ```python
 for attr, value in payload.dict(exclude_unset=True).items():
     setattr(thing, attr, value)
 ```
+
+**No premature abstraction (user preference):** do NOT extract private service helpers
+(e.g. `_get_x_relations`, `_validate_x`) for logic shared only between a resource's own
+create/update pair — write the validation/lookup inline in each function, even though it
+duplicates a few lines. Each service function should read top-to-bottom on its own.
+Extract a helper only when the same logic is genuinely needed across many call sites and
+the duplication is actively hurting.
 
 `views.py` — thin controller. Every handler has a Korean `summary=` and a docstring
 (both surface in Swagger). Status codes live here, not in services:

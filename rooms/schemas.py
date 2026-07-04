@@ -48,6 +48,23 @@ class RoomIn(Schema):
     category: int | None = None
 
 
+class RoomUpdateIn(Schema):
+    name: str
+    country: str
+    city: str
+    price: int
+    rooms: int
+    toilets: int
+    description: str
+    address: str
+    pet_friendly: bool
+    kind: RoomKindChoices
+    # PUT에서 owner는 선택 — 보내면 변경, 생략하면 기존 owner 유지
+    owner: int | None = None
+    amenities: list[int]
+    category: int | None = None
+
+
 class RoomOut(Schema):
     id: int
     name: str

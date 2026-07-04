@@ -75,6 +75,28 @@ thing: Thing = get_object_or_404(Thing, pk=thing_id)
 ```
 With django-stubs installed this is the only annotation usually needed.
 
+## 5. FK `*_id` (attname) is not typed — assign instances instead
+
+Django creates the `owner_id` column attribute at runtime (`ForeignKey` attname), and
+django-stubs without the mypy plugin cannot expose it, so pyright errors with
+`Cannot assign to attribute "owner_id" for class "Room" — Attribute "owner_id" is unknown`.
+
+Preferred fix: fetch the related instance and assign it to the relation field — this is
+fully typed, and when you already `get_object_or_404` the id for validation, reusing the
+instance costs no extra query:
+```python
+owner: User = get_object_or_404(User, pk=payload.owner)
+room.owner = owner          # typed OK; room.owner_id = payload.owner is NOT
+```
+Fallback (only if you must avoid the fetch): declare the attname on the model under
+`TYPE_CHECKING`, same pattern as reverse managers:
+```python
+class Room(CommonModel):
+    if TYPE_CHECKING:
+        owner_id: int
+        category_id: int | None
+```
+
 ## Gotcha: the ninja `request` param must be named exactly `request`
 
 Ninja identifies the request parameter ONLY by `name == "request"`
