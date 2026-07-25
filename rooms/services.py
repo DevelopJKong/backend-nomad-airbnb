@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from categories.models import Category
@@ -27,22 +28,25 @@ def create_room(payload: RoomIn) -> Room:
         # experiences 카테고리는 숙소에 붙일 수 없다 → kind 조건까지 걸어 404
         category = get_object_or_404(Category, pk=payload.category, kind=Category.CategoryKindChoices.ROOMS)
 
-    room = Room.objects.create(
-        name=payload.name,
-        country=payload.country,
-        city=payload.city,
-        price=payload.price,
-        rooms=payload.rooms,
-        toilets=payload.toilets,
-        description=payload.description,
-        address=payload.address,
-        pet_friendly=payload.pet_friendly,
-        kind=payload.kind,
-        owner=owner,
-        category=category,
-    )
-    # 존재하지 않는 id를 set()에 넘기면 IntegrityError — 실제 존재하는 것만 연결
-    room.amenities.set(Amenity.objects.filter(pk__in=payload.amenities))
+    # room 생성과 amenities 연결을 하나의 트랜잭션으로 묶어, 중간에 실패해도 room만 남지 않게 함
+    with transaction.atomic():
+        room = Room.objects.create(
+            name=payload.name,
+            country=payload.country,
+            city=payload.city,
+            price=payload.price,
+            rooms=payload.rooms,
+            toilets=payload.toilets,
+            description=payload.description,
+            address=payload.address,
+            pet_friendly=payload.pet_friendly,
+            kind=payload.kind,
+            owner=owner,
+            category=category,
+        )
+        # 존재하지 않는 id를 set()에 넘기면 IntegrityError — 실제 존재하는 것만 연결
+        room.amenities.set(Amenity.objects.filter(pk__in=payload.amenities))
+
     return room
 
 
@@ -72,9 +76,12 @@ def update_room(room_id: int, payload: RoomUpdateIn) -> Room:
     room.pet_friendly = payload.pet_friendly
     room.kind = payload.kind
     room.category = category
-    room.save()
 
-    room.amenities.set(Amenity.objects.filter(pk__in=payload.amenities))
+    # room 저장과 amenities 재설정을 하나의 트랜잭션으로 묶어, 중간에 실패해도 절반만 반영되지 않게 함
+    with transaction.atomic():
+        room.save()
+        room.amenities.set(Amenity.objects.filter(pk__in=payload.amenities))
+
     return room
 
 
