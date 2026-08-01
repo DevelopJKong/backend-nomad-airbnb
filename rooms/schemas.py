@@ -95,6 +95,19 @@ class PagedRoomOut(Schema):
     page_size: int
 
 
+class RoomPhotoOut(Schema):
+    """숙소 사진. 파일 실체는 UploadThing에 있으므로 url만 노출하고,
+    삭제용 key는 내부 식별자라 응답에 담지 않는다."""
+
+    id: int
+    url: str
+    caption: str
+    # depth=1: 사진이 어느 숙소 것인지 중첩 객체로 함께 내려준다
+    room: RoomOut
+    created_at: datetime
+    updated_at: datetime
+
+
 class ReviewOut(Schema):
     id: int
     created_at: datetime

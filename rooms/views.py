@@ -1,7 +1,7 @@
-from ninja import P, QueryEx, Router
+from ninja import File, FormEx, P, QueryEx, Router, UploadedFile
 
 from . import services
-from .schemas import AmenityIn, AmenityOut, PagedRoomOut, ReviewOut, RoomIn, RoomOut, RoomUpdateIn
+from .schemas import AmenityIn, AmenityOut, PagedRoomOut, ReviewOut, RoomIn, RoomOut, RoomPhotoOut, RoomUpdateIn
 
 router = Router()  # rooms 최상위 라우터
 amenity_router = Router()  # amenities 하위 라우터
@@ -33,13 +33,20 @@ def get_room_reviews(
     return services.get_room_reviews(room_id, page=page, page_size=page_size)
 
 
-@router.post('/', response={201: RoomOut}, summary='숙소 생성')
-def create_room(
+@router.post('/{room_id}/photos', response={201: RoomPhotoOut}, summary='숙소 사진 등록')
+def create_room_photo(
     request,  # pyright: ignore[reportUnusedParameter]
-    payload: RoomIn,
+    room_id: int,
+    # multipart/form-data — 파일은 File, 나머지 필드는 Form으로 받는다
+    file: File[UploadedFile],
+    caption: FormEx[str, P(max_length=140)] = '',
 ):
-    """새 숙소를 생성합니다. owner/category가 없거나 category가 rooms 종류가 아니면 404."""
-    return 201, services.create_room(payload)
+    """이미지를 UploadThing에 업로드하고 `room_id` 숙소에 연결합니다.
+
+    숙소가 없으면 404, 이미지가 아니거나 용량을 초과하면 422,
+    UploadThing 호출이 실패하면 502를 반환합니다.
+    """
+    return 201, services.create_room_photo(room_id, file=file, caption=caption)
 
 
 @router.get('/{room_id}', response=RoomOut, summary='숙소 상세 조회')

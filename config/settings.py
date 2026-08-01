@@ -147,3 +147,19 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MEDIA_ROOT = 'uploads'
+
+MEDIA_URL = 'user-uploads/'
+
+
+# UploadThing (외부 파일 스토리지)
+# https://docs.uploadthing.com/api-reference/openapi-spec
+#
+# v7부터 UPLOADTHING_SECRET이 UPLOADTHING_TOKEN으로 통합됐다.
+# 토큰은 apiKey/appId/regions를 담은 base64 JSON이며, REST 호출에는 그 안의 apiKey만 필요하다.
+# 대시보드 > API Keys > V7 탭에서 발급.
+UPLOADTHING_TOKEN = env('UPLOADTHING_TOKEN', '')
+
+# 업로드 허용 최대 크기 (bytes)
+UPLOADTHING_MAX_FILE_SIZE = env.int('UPLOADTHING_MAX_FILE_SIZE', 5 * 1024 * 1024)

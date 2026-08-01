@@ -1,7 +1,15 @@
+from io import BytesIO
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from PIL import Image, UnidentifiedImageError
 
 from categories.models import Category
+from common import uploadthing
+from medias.models import Photo
 from users.models import User
 
 from .models import Amenity, Room
@@ -41,6 +49,38 @@ def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
         'page': page,
         'page_size': page_size,
     }
+
+
+def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Photo:
+    """업로드된 이미지를 UploadThing에 올리고 숙소에 연결한다."""
+    # 응답 스키마(RoomPhotoOut.room)가 room을 depth=1로 직렬화하므로,
+    # 직렬화 중 추가 쿼리가 나가지 않도록 관계를 미리 로드해둔다.
+    room: Room = get_object_or_404(
+        Room.objects.select_related('owner', 'category').prefetch_related('amenities'),
+        pk=room_id,
+    )
+
+    # UploadThing에 보낼 때 어차피 전체 바이트가 필요하므로 한 번에 읽는다.
+    # 상한(기본 5MB)이 있어 메모리에 올려도 안전한 크기다.
+    content = file.read()
+    max_size: int = settings.UPLOADTHING_MAX_FILE_SIZE
+    if len(content) > max_size:
+        raise ValidationError(f'파일이 너무 큽니다. 최대 {max_size // (1024 * 1024)}MB까지 업로드할 수 있습니다.')
+
+    # Photo.objects.create()는 full_clean()을 부르지 않아 필드 검증이 자동으로 걸리지 않는다.
+    # 확장자와 Content-Type은 클라이언트가 위조할 수 있으므로 실제로 디코딩되는 이미지인지 확인한다.
+    try:
+        Image.open(BytesIO(content)).verify()
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValidationError('이미지 파일이 아닙니다.') from exc
+
+    uploaded = uploadthing.upload(
+        content=content,
+        name=file.name or 'upload',
+        content_type=file.content_type or 'application/octet-stream',
+    )
+
+    return Photo.objects.create(url=uploaded.url, key=uploaded.key, caption=caption, room=room)
 
 
 def create_room(payload: RoomIn) -> Room:
