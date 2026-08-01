@@ -32,8 +32,15 @@ def get_room(room_id: int) -> Room:
     )
 
 
-def get_room_reviews(room_id: int):
-    return Room.objects.get(pk=room_id).reviews.all()
+def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
+    reviews = Room.objects.get(pk=room_id).reviews.all()
+    offset = (page - 1) * page_size
+    return {
+        'items': reviews[offset : offset + page_size],
+        'count': reviews.count(),
+        'page': page,
+        'page_size': page_size,
+    }
 
 
 def create_room(payload: RoomIn) -> Room:

@@ -26,9 +26,11 @@ def get_rooms_list(
 def get_room_reviews(
     request,  # pyright: ignore[reportUnusedParameter]
     room_id: int,
+    page: QueryEx[int, P(ge=1, description='1부터 시작하는 페이지 번호')] = 1,
+    page_size: QueryEx[int, P(ge=1, le=50, description='한 페이지 개수 (최대 50)')] = 10,
 ):
     """`room_id`에 해당하는 숙소 리뷰를 반환합니다."""
-    return services.get_room_reviews(room_id)
+    return services.get_room_reviews(room_id, page=page, page_size=page_size)
 
 
 @router.post('/', response={201: RoomOut}, summary='숙소 생성')
