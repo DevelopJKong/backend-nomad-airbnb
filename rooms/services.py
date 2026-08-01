@@ -1,4 +1,6 @@
+import logging
 from io import BytesIO
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,11 +11,14 @@ from PIL import Image, UnidentifiedImageError
 
 from categories.models import Category
 from common import uploadthing
+from common.uploadthing import UploadThingError
 from medias.models import Photo
 from users.models import User
 
 from .models import Amenity, Room
 from .schemas import AmenityIn, RoomIn, RoomUpdateIn
+
+logger = logging.getLogger(__name__)
 
 
 def get_rooms_list(*, page: int = 1, page_size: int = 10):
@@ -70,17 +75,40 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
     # Photo.objects.create()는 full_clean()을 부르지 않아 필드 검증이 자동으로 걸리지 않는다.
     # 확장자와 Content-Type은 클라이언트가 위조할 수 있으므로 실제로 디코딩되는 이미지인지 확인한다.
     try:
-        Image.open(BytesIO(content)).verify()
+        image = Image.open(BytesIO(content))
+        image_format = image.format  # verify()가 객체를 무효화하므로 먼저 읽어둔다
+        image.verify()
     except (UnidentifiedImageError, OSError) as exc:
         raise ValidationError('이미지 파일이 아닙니다.') from exc
 
+    # 클라이언트가 보낸 파일명/Content-Type을 그대로 믿지 않고 Pillow가 판별한 실제 포맷으로 다시 만든다.
+    # (JPEG를 evil.png + image/png로 위장해 보내도 image/jpeg로 교정된다)
+    Image.init()  # Image.MIME은 플러그인이 로드돼야 채워진다
+    extension = (image_format or 'PNG').lower()
     uploaded = uploadthing.upload(
         content=content,
-        name=file.name or 'upload',
-        content_type=file.content_type or 'application/octet-stream',
+        name=f'room-{room.pk}-{uuid4().hex}.{extension}',
+        content_type=Image.MIME.get(image_format or 'PNG', 'application/octet-stream'),
     )
 
     return Photo.objects.create(url=uploaded.url, key=uploaded.key, caption=caption, room=room)
+
+
+def delete_room_photo(room_id: int, photo_id: int) -> None:
+    """숙소 사진을 DB와 UploadThing 양쪽에서 삭제한다."""
+    # room_id 조건을 함께 걸어야 다른 숙소의 사진 id를 넣어 지우는 걸 막을 수 있다
+    photo: Photo = get_object_or_404(Photo, pk=photo_id, room_id=room_id)
+    key = photo.key
+    photo.delete()
+
+    # 순서 주의 — DB를 먼저 지운다.
+    # 원격을 먼저 지우면 DB 삭제가 실패했을 때 죽은 URL을 가리키는 행이 남아 깨진 이미지가 노출된다.
+    # 이 순서라면 최악이 고아 파일(사용자 눈엔 안 보이는 저장소 낭비)이라 덜 나쁘다.
+    try:
+        uploadthing.delete(key)
+    except UploadThingError:
+        # 사진은 이미 사라졌으니 요청 자체는 성공이다. 고아 파일만 로그로 남겨 나중에 정리한다.
+        logger.exception('UploadThing 파일 삭제 실패 — 고아 파일이 남았습니다 (key=%s)', key)
 
 
 def create_room(payload: RoomIn) -> Room:

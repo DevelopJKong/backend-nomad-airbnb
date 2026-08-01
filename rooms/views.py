@@ -33,6 +33,15 @@ def get_room_reviews(
     return services.get_room_reviews(room_id, page=page, page_size=page_size)
 
 
+@router.post('/', response={201: RoomOut}, summary='숙소 생성')
+def create_room(
+    request,  # pyright: ignore[reportUnusedParameter]
+    payload: RoomIn,
+):
+    """새 숙소를 생성합니다. owner/category가 없거나 category가 rooms 종류가 아니면 404."""
+    return 201, services.create_room(payload)
+
+
 @router.post('/{room_id}/photos', response={201: RoomPhotoOut}, summary='숙소 사진 등록')
 def create_room_photo(
     request,  # pyright: ignore[reportUnusedParameter]
@@ -47,6 +56,21 @@ def create_room_photo(
     UploadThing 호출이 실패하면 502를 반환합니다.
     """
     return 201, services.create_room_photo(room_id, file=file, caption=caption)
+
+
+@router.delete('/{room_id}/photos/{photo_id}', response={204: None}, summary='숙소 사진 삭제')
+def delete_room_photo(
+    request,  # pyright: ignore[reportUnusedParameter]
+    room_id: int,
+    photo_id: int,
+):
+    """사진을 DB와 UploadThing 양쪽에서 삭제합니다.
+
+    해당 숙소의 사진이 아니면 404. UploadThing 파일 삭제가 실패해도
+    사진은 이미 사라졌으므로 204를 반환하고 서버 로그에만 남깁니다.
+    """
+    services.delete_room_photo(room_id, photo_id)
+    return 204, None
 
 
 @router.get('/{room_id}', response=RoomOut, summary='숙소 상세 조회')
