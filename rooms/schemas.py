@@ -83,3 +83,24 @@ class RoomOut(Schema):
     category: CategoryOut | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class PagedRoomOut(Schema):
+    """숙소 목록의 페이지 응답. 클라이언트가 다음 페이지 존재 여부를 계산할 수 있도록
+    요청 조건(page/page_size)을 그대로 되돌려준다."""
+
+    items: list[RoomOut]
+    count: int  # 페이지가 아니라 전체 숙소 개수
+    page: int
+    page_size: int
+
+
+class ReviewOut(Schema):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    payload: str
+    rating: int
+    user: OwnerOut
+    room: RoomOut
+    experience: str | None = None

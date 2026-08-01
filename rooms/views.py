@@ -1,18 +1,34 @@
-from ninja import Router
+from ninja import P, QueryEx, Router
 
 from . import services
-from .schemas import AmenityIn, AmenityOut, RoomIn, RoomOut, RoomUpdateIn
+from .schemas import AmenityIn, AmenityOut, PagedRoomOut, ReviewOut, RoomIn, RoomOut, RoomUpdateIn
 
 router = Router()  # rooms 최상위 라우터
 amenity_router = Router()  # amenities 하위 라우터
 
 
-@router.get('/', response=list[RoomOut], summary='숙소 목록 조회')
+@router.get('/', response=PagedRoomOut, summary='숙소 목록 조회')
 def get_rooms_list(
     request,  # pyright: ignore[reportUnusedParameter]
+    # 페이지 파라미터를 시그니처에 그대로 노출 — 검증(ge/le)까지 여기서 끝난다.
+    # le=50 위반은 조용히 깎지 않고 422로 거절한다.
+    page: QueryEx[int, P(ge=1, description='1부터 시작하는 페이지 번호')] = 1,
+    page_size: QueryEx[int, P(ge=1, le=50, description='한 페이지 개수 (최대 50)')] = 10,
 ):
-    """등록된 모든 숙소를 반환합니다."""
-    return services.list_rooms()
+    """등록된 숙소를 페이지 단위로 반환합니다.
+
+    `{"items": [...], "count": 전체 개수, "page": ..., "page_size": ...}` 형태로 응답합니다.
+    """
+    return services.get_rooms_list(page=page, page_size=page_size)
+
+
+@router.get('/{room_id}/reviews', response=list[ReviewOut], summary='')
+def get_room_reviews(
+    request,  # pyright: ignore[reportUnusedParameter]
+    room_id: int,
+):
+    """`room_id`에 해당하는 숙소 리뷰를 반환합니다."""
+    return services.get_room_reviews(room_id)
 
 
 @router.post('/', response={201: RoomOut}, summary='숙소 생성')

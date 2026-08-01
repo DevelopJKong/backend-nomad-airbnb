@@ -8,9 +8,21 @@ from .models import Amenity, Room
 from .schemas import AmenityIn, RoomIn, RoomUpdateIn
 
 
-def list_rooms():
+def get_rooms_list(*, page: int = 1, page_size: int = 10):
     # depth=1 중첩 직렬화의 N+1 방지: FK는 select_related, M2M는 prefetch_related
-    return Room.objects.select_related('owner', 'category').prefetch_related('amenities').all()
+    # 정렬 없이 페이지를 자르면 DB가 매번 다른 순서를 줄 수 있어(같은 row가 1p/2p에 중복 노출) 최신순으로 고정.
+    # created_at 동률에 대비해 pk를 tie-breaker로 둔다.
+    rooms = Room.objects.select_related('owner', 'category').prefetch_related('amenities').order_by('-created_at', '-pk')
+
+    # QuerySet은 지연 평가라 아직 DB에 안 간 상태 — 슬라이싱이 SQL의 LIMIT/OFFSET으로 컴파일되어
+    # 전체를 읽은 뒤 자르는 게 아니라 애초에 한 페이지만 조회한다.
+    offset = (page - 1) * page_size
+    return {
+        'items': rooms[offset : offset + page_size],
+        'count': rooms.count(),  # 페이지가 아닌 전체 개수 (COUNT 쿼리 1회 추가)
+        'page': page,
+        'page_size': page_size,
+    }
 
 
 def get_room(room_id: int) -> Room:
@@ -18,6 +30,10 @@ def get_room(room_id: int) -> Room:
         Room.objects.select_related('owner', 'category').prefetch_related('amenities'),
         pk=room_id,
     )
+
+
+def get_room_reviews(room_id: int):
+    return Room.objects.get(pk=room_id).reviews.all()
 
 
 def create_room(payload: RoomIn) -> Room:

@@ -4,6 +4,7 @@ from ninja import NinjaAPI
 
 from categories.views import router as categories_router
 from experiences.views import router as experiences_router
+from reviews.views import router as reviews_router
 from rooms.views import router as rooms_router
 
 api = NinjaAPI(
@@ -15,6 +16,7 @@ api = NinjaAPI(
 api.add_router('/categories/', categories_router, tags=['Categories'])
 api.add_router('/rooms/', rooms_router, tags=['Rooms'])
 api.add_router('/experiences/', experiences_router, tags=['Experiences'])
+api.add_router('/reviews/', reviews_router, tags=['Reviews'])
 
 urlpatterns = [
     path('admin/', admin.site.urls),
