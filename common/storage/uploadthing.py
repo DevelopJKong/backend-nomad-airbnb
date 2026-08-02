@@ -12,7 +12,7 @@ v7부터 REST의 /v6/uploadFiles는 폐기됐고("Unsupported operation"), 업�
 https://docs.uploadthing.com/uploading-files
 
 이 모듈은 스토리지 연동만 책임지고 도메인 로직(어떤 Room에 붙일지 등)은 모른다.
-서비스 계층이 얇게 감싸 쓰도록 실패는 UploadThingError 하나로 통일한다.
+실패는 공통 StorageError로 통일해 서비스 계층이 백엔드를 구분하지 않아도 되게 한다.
 """
 
 import base64
@@ -30,6 +30,8 @@ from django.conf import settings
 from sqids import Sqids
 from sqids.constants import DEFAULT_ALPHABET
 
+from .base import StorageError, UploadedFile
+
 API_BASE = 'https://api.uploadthing.com'
 
 # 네트워크가 죽었을 때 요청 스레드가 무한정 잡혀 있지 않도록 상한을 둔다.
@@ -37,20 +39,6 @@ TIMEOUT = httpx.Timeout(connect=5.0, read=30.0, write=60.0, pool=5.0)
 
 # 프리사인 URL 유효 시간 (ms). 서버가 즉시 사용하므로 짧아도 충분하다.
 PRESIGNED_TTL_MS = 60 * 1000
-
-
-class UploadThingError(Exception):
-    """UploadThing 연동 실패. config/urls.py의 예외 핸들러가 502로 변환한다."""
-
-
-@dataclass(frozen=True)
-class UploadedFile:
-    """업로드 완료된 파일. key는 나중에 UploadThing에서 삭제할 때 필요하다."""
-
-    key: str
-    url: str
-    name: str
-    size: int
 
 
 @dataclass(frozen=True)
@@ -64,7 +52,7 @@ def _credentials() -> _Credentials:
     """UPLOADTHING_TOKEN(base64 JSON)에서 apiKey/appId/region을 꺼낸다."""
     token: str = settings.UPLOADTHING_TOKEN
     if not token:
-        raise UploadThingError('UPLOADTHING_TOKEN이 설정되지 않았습니다.')
+        raise StorageError('UPLOADTHING_TOKEN이 설정되지 않았습니다.')
 
     try:
         # base64 표준 디코딩은 패딩이 맞아야 해서, 잘려 있을 경우를 대비해 채워준다
@@ -72,7 +60,7 @@ def _credentials() -> _Credentials:
         return _Credentials(api_key=decoded['apiKey'], app_id=decoded['appId'], region=decoded['regions'][0])
     except (ValueError, KeyError, IndexError) as exc:
         # 대시보드가 주는 "UPLOADTHING_TOKEN='eyJ...'" 줄을 통째로 값에 넣는 실수가 잦다.
-        raise UploadThingError(
+        raise StorageError(
             "UPLOADTHING_TOKEN 형식이 올바르지 않습니다. .env에는 'eyJ'로 시작하는 base64 토큰 값만 넣어야 합니다 "
             '(UPLOADTHING_TOKEN= 접두사나 따옴표가 값 안에 포함되지 않았는지 확인하세요).'
         ) from exc
@@ -146,14 +134,14 @@ def upload(*, content: bytes, name: str, content_type: str) -> UploadedFile:
             response.raise_for_status()
             body = response.json()
     except httpx.HTTPError as exc:
-        raise UploadThingError(f'UploadThing 업로드에 실패했습니다: {exc}') from exc
+        raise StorageError(f'UploadThing 업로드에 실패했습니다: {exc}') from exc
     except ValueError as exc:
-        raise UploadThingError('UploadThing 응답을 해석할 수 없습니다.') from exc
+        raise StorageError('UploadThing 응답을 해석할 수 없습니다.') from exc
 
     # ufsUrl이 현재 정식 도메인({appId}.ufs.sh)이고 url(utfs.io)은 레거시다
     file_url = body.get('ufsUrl') or body.get('url')
     if not file_url:
-        raise UploadThingError('UploadThing이 파일 URL을 반환하지 않았습니다.')
+        raise StorageError('UploadThing이 파일 URL을 반환하지 않았습니다.')
 
     return UploadedFile(key=file_key, url=file_url, name=name, size=len(content))
 
@@ -171,4 +159,4 @@ def delete(key: str) -> None:
             )
             response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise UploadThingError(f'UploadThing 파일 삭제에 실패했습니다: {exc}') from exc
+        raise StorageError(f'UploadThing 파일 삭제에 실패했습니다: {exc}') from exc

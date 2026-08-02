@@ -50,10 +50,10 @@ def create_room_photo(
     file: File[UploadedFile],
     caption: FormEx[str, P(max_length=140)] = '',
 ):
-    """이미지를 UploadThing에 업로드하고 `room_id` 숙소에 연결합니다.
+    """이미지를 스토리지에 업로드하고 `room_id` 숙소에 연결합니다.
 
     숙소가 없으면 404, 이미지가 아니거나 용량을 초과하면 422,
-    UploadThing 호출이 실패하면 502를 반환합니다.
+    스토리지 호출이 실패하면 502를 반환합니다.
     """
     return 201, services.create_room_photo(room_id, file=file, caption=caption)
 
@@ -64,9 +64,9 @@ def delete_room_photo(
     room_id: int,
     photo_id: int,
 ):
-    """사진을 DB와 UploadThing 양쪽에서 삭제합니다.
+    """사진을 DB와 스토리지 양쪽에서 삭제합니다.
 
-    해당 숙소의 사진이 아니면 404. UploadThing 파일 삭제가 실패해도
+    해당 숙소의 사진이 아니면 404. 스토리지 파일 삭제가 실패해도
     사진은 이미 사라졌으므로 204를 반환하고 서버 로그에만 남깁니다.
     """
     services.delete_room_photo(room_id, photo_id)

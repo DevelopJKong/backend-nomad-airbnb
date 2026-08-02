@@ -10,8 +10,8 @@ from django.shortcuts import get_object_or_404
 from PIL import Image, UnidentifiedImageError
 
 from categories.models import Category
-from common import uploadthing
-from common.uploadthing import UploadThingError
+from common import storage
+from common.storage import StorageError
 from medias.models import Photo
 from users.models import User
 
@@ -57,7 +57,7 @@ def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
 
 
 def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Photo:
-    """업로드된 이미지를 UploadThing에 올리고 숙소에 연결한다."""
+    """업로드된 이미지를 설정된 스토리지(UPLOAD_SERVER)에 올리고 숙소에 연결한다."""
     # 응답 스키마(RoomPhotoOut.room)가 room을 depth=1로 직렬화하므로,
     # 직렬화 중 추가 쿼리가 나가지 않도록 관계를 미리 로드해둔다.
     room: Room = get_object_or_404(
@@ -65,10 +65,10 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
         pk=room_id,
     )
 
-    # UploadThing에 보낼 때 어차피 전체 바이트가 필요하므로 한 번에 읽는다.
+    # 스토리지에 보낼 때 어차피 전체 바이트가 필요하므로 한 번에 읽는다.
     # 상한(기본 5MB)이 있어 메모리에 올려도 안전한 크기다.
     content = file.read()
-    max_size: int = settings.UPLOADTHING_MAX_FILE_SIZE
+    max_size: int = settings.UPLOAD_MAX_FILE_SIZE
     if len(content) > max_size:
         raise ValidationError(f'파일이 너무 큽니다. 최대 {max_size // (1024 * 1024)}MB까지 업로드할 수 있습니다.')
 
@@ -82,10 +82,11 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
         raise ValidationError('이미지 파일이 아닙니다.') from exc
 
     # 클라이언트가 보낸 파일명/Content-Type을 그대로 믿지 않고 Pillow가 판별한 실제 포맷으로 다시 만든다.
+    # (UploadThing은 확장자로, S3는 ContentType으로 MIME을 정하므로 둘 다 정확한 값을 넘겨야 한다)
     # (JPEG를 evil.png + image/png로 위장해 보내도 image/jpeg로 교정된다)
     Image.init()  # Image.MIME은 플러그인이 로드돼야 채워진다
     extension = (image_format or 'PNG').lower()
-    uploaded = uploadthing.upload(
+    uploaded = storage.upload(
         content=content,
         name=f'room-{room.pk}-{uuid4().hex}.{extension}',
         content_type=Image.MIME.get(image_format or 'PNG', 'application/octet-stream'),
@@ -95,7 +96,7 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
 
 
 def delete_room_photo(room_id: int, photo_id: int) -> None:
-    """숙소 사진을 DB와 UploadThing 양쪽에서 삭제한다."""
+    """숙소 사진을 DB와 스토리지 양쪽에서 삭제한다."""
     # room_id 조건을 함께 걸어야 다른 숙소의 사진 id를 넣어 지우는 걸 막을 수 있다
     photo: Photo = get_object_or_404(Photo, pk=photo_id, room_id=room_id)
     key = photo.key
@@ -105,10 +106,10 @@ def delete_room_photo(room_id: int, photo_id: int) -> None:
     # 원격을 먼저 지우면 DB 삭제가 실패했을 때 죽은 URL을 가리키는 행이 남아 깨진 이미지가 노출된다.
     # 이 순서라면 최악이 고아 파일(사용자 눈엔 안 보이는 저장소 낭비)이라 덜 나쁘다.
     try:
-        uploadthing.delete(key)
-    except UploadThingError:
+        storage.delete(key)
+    except StorageError:
         # 사진은 이미 사라졌으니 요청 자체는 성공이다. 고아 파일만 로그로 남겨 나중에 정리한다.
-        logger.exception('UploadThing 파일 삭제 실패 — 고아 파일이 남았습니다 (key=%s)', key)
+        logger.exception('스토리지 파일 삭제 실패 — 고아 파일이 남았습니다 (backend=%s, key=%s)', settings.UPLOAD_SERVER, key)
 
 
 def create_room(payload: RoomIn) -> Room:

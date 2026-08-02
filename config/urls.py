@@ -5,7 +5,7 @@ from django.urls import path
 from ninja import NinjaAPI
 
 from categories.views import router as categories_router
-from common.uploadthing import UploadThingError
+from common.storage import StorageError
 from experiences.views import router as experiences_router
 from reviews.views import router as reviews_router
 from rooms.views import router as rooms_router
@@ -26,8 +26,8 @@ def on_validation_error(request: HttpRequest, exc: ValidationError) -> HttpRespo
     return api.create_response(request, {'detail': exc.messages}, status=422)
 
 
-@api.exception_handler(UploadThingError)
-def on_uploadthing_error(request: HttpRequest, exc: UploadThingError) -> HttpResponse:
+@api.exception_handler(StorageError)
+def on_storage_error(request: HttpRequest, exc: StorageError) -> HttpResponse:
     """외부 스토리지 장애 — 우리 잘못도 클라이언트 잘못도 아니므로 502."""
     return api.create_response(request, {'detail': str(exc)}, status=502)
 

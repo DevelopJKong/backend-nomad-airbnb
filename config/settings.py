@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from environs import Env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -153,7 +154,20 @@ MEDIA_ROOT = 'uploads'
 MEDIA_URL = 'user-uploads/'
 
 
-# UploadThing (외부 파일 스토리지)
+# 파일 스토리지
+# 어느 백엔드로 업로드할지 고른다. common/storage/__init__.py 가 이 값으로 분기한다.
+UPLOAD_SERVER = env('UPLOAD_SERVER', 'UPLOADTHING').upper()
+
+UPLOAD_SERVER_CHOICES = ('UPLOADTHING', 'AWS')
+if UPLOAD_SERVER not in UPLOAD_SERVER_CHOICES:
+    # 런타임에 502로 터지기 전에 부팅 시점에 잡는다
+    raise ImproperlyConfigured(f'UPLOAD_SERVER는 {UPLOAD_SERVER_CHOICES} 중 하나여야 합니다. 현재 값: {UPLOAD_SERVER!r}')
+
+# 업로드 허용 최대 크기 (bytes) — 백엔드와 무관하게 적용
+UPLOAD_MAX_FILE_SIZE = env.int('UPLOAD_MAX_FILE_SIZE', 5 * 1024 * 1024)
+
+
+# UPLOAD_SERVER=UPLOADTHING 일 때
 # https://docs.uploadthing.com/api-reference/openapi-spec
 #
 # v7부터 UPLOADTHING_SECRET이 UPLOADTHING_TOKEN으로 통합됐다.
@@ -161,5 +175,18 @@ MEDIA_URL = 'user-uploads/'
 # 대시보드 > API Keys > V7 탭에서 발급.
 UPLOADTHING_TOKEN = env('UPLOADTHING_TOKEN', '')
 
-# 업로드 허용 최대 크기 (bytes)
-UPLOADTHING_MAX_FILE_SIZE = env.int('UPLOADTHING_MAX_FILE_SIZE', 5 * 1024 * 1024)
+
+# UPLOAD_SERVER=AWS 일 때
+# 자격증명을 비워두면 boto3가 환경변수/IAM 역할 등 기본 체인을 따라간다.
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', '')
+
+# DB에 영구 공개 URL을 저장하므로 버킷이 공개 읽기를 허용해야 한다.
+# 2023년 4월 이후 만든 버킷은 ACL이 기본 비활성이라 아래를 비워두고 버킷 정책으로 여는 것이 정석이다.
+# ACL이 활성화된 버킷이라면 'public-read'를 넣는다.
+AWS_S3_ACL = env('AWS_S3_ACL', '')
+
+# CloudFront 등을 앞에 뒀다면 그 도메인으로 URL을 만든다 (예: dxxxx.cloudfront.net)
+AWS_S3_CUSTOM_DOMAIN = env('AWS_S3_CUSTOM_DOMAIN', '')
