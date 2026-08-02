@@ -1,4 +1,7 @@
 from ninja import File, FormEx, P, QueryEx, Router, UploadedFile
+from ninja.security import django_auth
+
+from common.permissions import IsHost, permission_classes
 
 from . import services
 from .schemas import AmenityIn, AmenityOut, PagedRoomOut, ReviewOut, RoomIn, RoomOut, RoomPhotoOut, RoomUpdateIn
@@ -33,18 +36,19 @@ def get_room_reviews(
     return services.get_room_reviews(room_id, page=page, page_size=page_size)
 
 
-@router.post('/', response={201: RoomOut}, summary='숙소 생성')
-def create_room(
-    request,  # pyright: ignore[reportUnusedParameter]
-    payload: RoomIn,
-):
-    """새 숙소를 생성합니다. owner/category가 없거나 category가 rooms 종류가 아니면 404."""
-    return 201, services.create_room(payload)
+@router.post('/', auth=django_auth, response={201: RoomOut}, summary='숙소 생성')
+@permission_classes(IsHost())
+def create_room(request, payload: RoomIn):
+    """새 숙소를 생성합니다. 소유자는 로그인한 유저로 자동 설정됩니다.
+
+    비로그인 401, 호스트가 아니면 403, category가 rooms 종류가 아니면 404.
+    """
+    return 201, services.create_room(payload, user=request.auth)
 
 
-@router.post('/{room_id}/photos', response={201: RoomPhotoOut}, summary='숙소 사진 등록')
+@router.post('/{room_id}/photos', auth=django_auth, response={201: RoomPhotoOut}, summary='숙소 사진 등록')
 def create_room_photo(
-    request,  # pyright: ignore[reportUnusedParameter]
+    request,
     room_id: int,
     # multipart/form-data — 파일은 File, 나머지 필드는 Form으로 받는다
     file: File[UploadedFile],
@@ -52,24 +56,20 @@ def create_room_photo(
 ):
     """이미지를 스토리지에 업로드하고 `room_id` 숙소에 연결합니다.
 
-    숙소가 없으면 404, 이미지가 아니거나 용량을 초과하면 422,
-    스토리지 호출이 실패하면 502를 반환합니다.
+    비로그인 401, 숙소 소유자가 아니면 403, 숙소가 없으면 404,
+    이미지가 아니거나 용량을 초과하면 422, 스토리지 호출이 실패하면 502.
     """
-    return 201, services.create_room_photo(room_id, file=file, caption=caption)
+    return 201, services.create_room_photo(room_id, file=file, caption=caption, user=request.auth)
 
 
-@router.delete('/{room_id}/photos/{photo_id}', response={204: None}, summary='숙소 사진 삭제')
-def delete_room_photo(
-    request,  # pyright: ignore[reportUnusedParameter]
-    room_id: int,
-    photo_id: int,
-):
+@router.delete('/{room_id}/photos/{photo_id}', auth=django_auth, response={204: None}, summary='숙소 사진 삭제')
+def delete_room_photo(request, room_id: int, photo_id: int):
     """사진을 DB와 스토리지 양쪽에서 삭제합니다.
 
-    해당 숙소의 사진이 아니면 404. 스토리지 파일 삭제가 실패해도
-    사진은 이미 사라졌으므로 204를 반환하고 서버 로그에만 남깁니다.
+    비로그인 401, 숙소 소유자가 아니면 403, 해당 숙소의 사진이 아니면 404.
+    스토리지 파일 삭제가 실패해도 사진은 이미 사라졌으므로 204를 반환하고 서버 로그에만 남깁니다.
     """
-    services.delete_room_photo(room_id, photo_id)
+    services.delete_room_photo(room_id, photo_id, user=request.auth)
     return 204, None
 
 
@@ -82,23 +82,19 @@ def get_room(
     return services.get_room(room_id)
 
 
-@router.put('/{room_id}', response=RoomOut, summary='숙소 수정')
-def update_room(
-    request,  # pyright: ignore[reportUnusedParameter]
-    room_id: int,
-    payload: RoomUpdateIn,
-):
-    """전달된 필드로 숙소 전체를 교체합니다(PUT). owner는 생략 시 기존 값 유지. 없으면 404."""
-    return services.update_room(room_id, payload)
+@router.put('/{room_id}', auth=django_auth, response=RoomOut, summary='숙소 수정')
+def update_room(request, room_id: int, payload: RoomUpdateIn):
+    """전달된 필드로 숙소 전체를 교체합니다(PUT).
+
+    비로그인 401, 소유자가 아니면 403, 숙소가 없으면 404. 소유권은 이전할 수 없습니다.
+    """
+    return services.update_room(room_id, payload, user=request.auth)
 
 
-@router.delete('/{room_id}', response={204: None}, summary='숙소 삭제')
-def delete_room(
-    request,  # pyright: ignore[reportUnusedParameter]
-    room_id: int,
-):
-    """`room_id`에 해당하는 숙소를 삭제합니다."""
-    services.delete_room(room_id)
+@router.delete('/{room_id}', auth=django_auth, response={204: None}, summary='숙소 삭제')
+def delete_room(request, room_id: int):
+    """`room_id`에 해당하는 숙소를 삭제합니다. 비로그인 401, 소유자가 아니면 403, 없으면 404."""
+    services.delete_room(room_id, user=request.auth)
     return 204, None
 
 

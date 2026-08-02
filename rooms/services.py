@@ -11,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 from categories.models import Category
 from common import storage
+from common.permissions import IsOwner
 from common.storage import StorageError
 from medias.models import Photo
 from users.models import User
@@ -56,7 +57,7 @@ def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
     }
 
 
-def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Photo:
+def create_room_photo(room_id: int, *, file: UploadedFile, caption: str, user: User) -> Photo:
     """업로드된 이미지를 설정된 스토리지(UPLOAD_SERVER)에 올리고 숙소에 연결한다."""
     # 응답 스키마(RoomPhotoOut.room)가 room을 depth=1로 직렬화하므로,
     # 직렬화 중 추가 쿼리가 나가지 않도록 관계를 미리 로드해둔다.
@@ -64,6 +65,8 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
         Room.objects.select_related('owner', 'category').prefetch_related('amenities'),
         pk=room_id,
     )
+    # 사진은 숙소에 종속되므로 숙소 소유자만 올릴 수 있다
+    IsOwner().check_object(user, room)
 
     # 스토리지에 보낼 때 어차피 전체 바이트가 필요하므로 한 번에 읽는다.
     # 상한(기본 5MB)이 있어 메모리에 올려도 안전한 크기다.
@@ -95,10 +98,12 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str) -> Phot
     return Photo.objects.create(url=uploaded.url, key=uploaded.key, caption=caption, room=room)
 
 
-def delete_room_photo(room_id: int, photo_id: int) -> None:
+def delete_room_photo(room_id: int, photo_id: int, *, user: User) -> None:
     """숙소 사진을 DB와 스토리지 양쪽에서 삭제한다."""
-    # room_id 조건을 함께 걸어야 다른 숙소의 사진 id를 넣어 지우는 걸 막을 수 있다
-    photo: Photo = get_object_or_404(Photo, pk=photo_id, room_id=room_id)
+    # room_id 조건을 함께 걸어야 다른 숙소의 사진 id를 넣어 지우는 걸 막을 수 있다.
+    # select_related로 room을 같이 가져와 소유자 검사에 추가 쿼리가 안 나가게 한다.
+    photo: Photo = get_object_or_404(Photo.objects.select_related('room'), pk=photo_id, room_id=room_id)
+    IsOwner().check_object(user, photo.room)
     key = photo.key
     photo.delete()
 
@@ -112,9 +117,8 @@ def delete_room_photo(room_id: int, photo_id: int) -> None:
         logger.exception('스토리지 파일 삭제 실패 — 고아 파일이 남았습니다 (backend=%s, key=%s)', settings.UPLOAD_SERVER, key)
 
 
-def create_room(payload: RoomIn) -> Room:
-    # pyright는 런타임 attname(owner_id 등)을 모르므로 인스턴스를 조회해 FK에 직접 대입 (없으면 404)
-    owner: User = get_object_or_404(User, pk=payload.owner)
+def create_room(payload: RoomIn, *, user: User) -> Room:
+    # owner는 payload가 아니라 로그인한 유저다 — 남의 이름으로 숙소를 만들 수 없다
     category: Category | None = None
     if payload.category is not None:
         # experiences 카테고리는 숙소에 붙일 수 없다 → kind 조건까지 걸어 404
@@ -133,7 +137,7 @@ def create_room(payload: RoomIn) -> Room:
             address=payload.address,
             pet_friendly=payload.pet_friendly,
             kind=payload.kind,
-            owner=owner,
+            owner=user,
             category=category,
         )
         # 존재하지 않는 id를 set()에 넘기면 IntegrityError — 실제 존재하는 것만 연결
@@ -142,20 +146,14 @@ def create_room(payload: RoomIn) -> Room:
     return room
 
 
-def update_room(room_id: int, payload: RoomUpdateIn) -> Room:
+def update_room(room_id: int, payload: RoomUpdateIn, *, user: User) -> Room:
     room: Room = get_object_or_404(Room, pk=room_id)
-
-    # owner는 선택 — 보냈을 때만 검증 후 변경, 생략(None)하면 기존 owner 유지
-    owner: User | None = None
-    if payload.owner is not None:
-        owner = get_object_or_404(User, pk=payload.owner)
+    # 객체 수준 권한 — 조회한 뒤에야 판단할 수 있어 views가 아니라 여기서 검사한다
+    IsOwner().check_object(user, room)
 
     category: Category | None = None
     if payload.category is not None:
         category = get_object_or_404(Category, pk=payload.category, kind=Category.CategoryKindChoices.ROOMS)
-
-    if owner is not None:
-        room.owner = owner
 
     room.name = payload.name
     room.country = payload.country
@@ -177,8 +175,9 @@ def update_room(room_id: int, payload: RoomUpdateIn) -> Room:
     return room
 
 
-def delete_room(room_id: int) -> None:
+def delete_room(room_id: int, *, user: User) -> None:
     room: Room = get_object_or_404(Room, pk=room_id)
+    IsOwner().check_object(user, room)
     room.delete()
 
 

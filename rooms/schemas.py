@@ -43,7 +43,7 @@ class RoomIn(Schema):
     address: str
     pet_friendly: bool
     kind: RoomKindChoices
-    owner: int
+    # owner는 payload로 받지 않는다 — 로그인한 유저가 곧 소유자다
     amenities: list[int]
     category: int | None = None
 
@@ -59,8 +59,7 @@ class RoomUpdateIn(Schema):
     address: str
     pet_friendly: bool
     kind: RoomKindChoices
-    # PUT에서 owner는 선택 — 보내면 변경, 생략하면 기존 owner 유지
-    owner: int | None = None
+    # 소유권 이전은 지원하지 않는다 — owner는 생성 시점에 고정된다
     amenities: list[int]
     category: int | None = None
 

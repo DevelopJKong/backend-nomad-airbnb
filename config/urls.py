@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.urls import path
 from ninja import NinjaAPI
@@ -9,6 +9,7 @@ from common.storage import StorageError
 from experiences.views import router as experiences_router
 from reviews.views import router as reviews_router
 from rooms.views import router as rooms_router
+from users.views import router as users_router
 
 api = NinjaAPI(
     version='1.0.0',
@@ -26,12 +27,19 @@ def on_validation_error(request: HttpRequest, exc: ValidationError) -> HttpRespo
     return api.create_response(request, {'detail': exc.messages}, status=422)
 
 
+@api.exception_handler(PermissionDenied)
+def on_permission_denied(request: HttpRequest, exc: PermissionDenied) -> HttpResponse:
+    """인증은 됐지만 권한이 없음 — 403. (인증 자체 실패는 Ninja가 401로 처리한다)"""
+    return api.create_response(request, {'detail': str(exc) or 'Forbidden'}, status=403)
+
+
 @api.exception_handler(StorageError)
 def on_storage_error(request: HttpRequest, exc: StorageError) -> HttpResponse:
     """외부 스토리지 장애 — 우리 잘못도 클라이언트 잘못도 아니므로 502."""
     return api.create_response(request, {'detail': str(exc)}, status=502)
 
 
+api.add_router('/users/', users_router, tags=['Users'])
 api.add_router('/categories/', categories_router, tags=['Categories'])
 api.add_router('/rooms/', rooms_router, tags=['Rooms'])
 api.add_router('/experiences/', experiences_router, tags=['Experiences'])
