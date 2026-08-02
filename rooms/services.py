@@ -14,10 +14,11 @@ from common import storage
 from common.permissions import IsOwner
 from common.storage import StorageError
 from medias.models import Photo
+from reviews.models import Review
 from users.models import User
 
 from .models import Amenity, Room
-from .schemas import AmenityIn, RoomIn, RoomUpdateIn
+from .schemas import AmenityIn, RoomIn, RoomReviewUpdateIn, RoomUpdateIn
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,18 @@ def get_room(room_id: int) -> Room:
     )
 
 
-def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
-    reviews = Room.objects.get(pk=room_id).reviews.all()
+# ReviewOut이 user와 room을 depth=1로 직렬화하고, room 안에는 owner/category/amenities가 또 들어 있다.
+# 이걸 미리 로드하지 않으면 리뷰 한 건마다 관계 쿼리가 추가로 나간다.
+_REVIEW_RELATIONS = Review.objects.select_related('user', 'room', 'room__owner', 'room__category').prefetch_related('room__amenities')
+
+
+def get_room_reviews(room_id: int, *, page: int = 1, page_size: int = 10):
+    # .get()은 없는 숙소에 DoesNotExist(→500)를 던진다. 존재 확인은 404로 처리한다.
+    get_object_or_404(Room, pk=room_id)
+
+    # 정렬이 없으면 페이지마다 순서가 달라져 같은 리뷰가 중복 노출되거나 누락된다
+    reviews = _REVIEW_RELATIONS.filter(room_id=room_id).order_by('-created_at', '-pk')
+
     offset = (page - 1) * page_size
     return {
         'items': reviews[offset : offset + page_size],
@@ -55,6 +66,26 @@ def get_room_reviews(room_id: int, page: int = 1, page_size: int = 10):
         'page': page,
         'page_size': page_size,
     }
+
+
+def get_room_review(room_id: int, review_id: int) -> Review:
+    """숙소에 달린 리뷰 한 건을 반환한다. 다른 숙소의 리뷰 id를 넣으면 404."""
+    # room_id 조건을 함께 걸어야 URL의 room_id가 장식이 되지 않는다
+    return get_object_or_404(_REVIEW_RELATIONS, pk=review_id, room_id=room_id)
+
+
+def update_room_review(room_id: int, review_id: int, payload: RoomReviewUpdateIn, *, user: User) -> Review:
+    """리뷰 내용을 교체한다(PUT). 작성자 본인만 가능."""
+    review: Review = get_object_or_404(Review, pk=review_id, room_id=room_id)
+    # Review의 소유자 필드는 owner가 아니라 user다
+    IsOwner('user_id', '본인이 작성한 리뷰만 수정할 수 있습니다.').check_object(user, review)
+
+    review.payload = payload.payload
+    review.rating = payload.rating
+    review.save()
+
+    # 응답 직렬화에 필요한 관계를 갖춘 인스턴스로 다시 읽어 N+1을 막는다
+    return get_object_or_404(_REVIEW_RELATIONS, pk=review.pk)
 
 
 def create_room_photo(room_id: int, *, file: UploadedFile, caption: str, user: User) -> Photo:
@@ -66,7 +97,7 @@ def create_room_photo(room_id: int, *, file: UploadedFile, caption: str, user: U
         pk=room_id,
     )
     # 사진은 숙소에 종속되므로 숙소 소유자만 올릴 수 있다
-    IsOwner().check_object(user, room)
+    IsOwner(message='본인 소유의 숙소만 다룰 수 있습니다.').check_object(user, room)
 
     # 스토리지에 보낼 때 어차피 전체 바이트가 필요하므로 한 번에 읽는다.
     # 상한(기본 5MB)이 있어 메모리에 올려도 안전한 크기다.
@@ -103,7 +134,7 @@ def delete_room_photo(room_id: int, photo_id: int, *, user: User) -> None:
     # room_id 조건을 함께 걸어야 다른 숙소의 사진 id를 넣어 지우는 걸 막을 수 있다.
     # select_related로 room을 같이 가져와 소유자 검사에 추가 쿼리가 안 나가게 한다.
     photo: Photo = get_object_or_404(Photo.objects.select_related('room'), pk=photo_id, room_id=room_id)
-    IsOwner().check_object(user, photo.room)
+    IsOwner(message='본인 소유의 숙소만 다룰 수 있습니다.').check_object(user, photo.room)
     key = photo.key
     photo.delete()
 
@@ -149,7 +180,7 @@ def create_room(payload: RoomIn, *, user: User) -> Room:
 def update_room(room_id: int, payload: RoomUpdateIn, *, user: User) -> Room:
     room: Room = get_object_or_404(Room, pk=room_id)
     # 객체 수준 권한 — 조회한 뒤에야 판단할 수 있어 views가 아니라 여기서 검사한다
-    IsOwner().check_object(user, room)
+    IsOwner(message='본인 소유의 숙소만 다룰 수 있습니다.').check_object(user, room)
 
     category: Category | None = None
     if payload.category is not None:
@@ -177,7 +208,7 @@ def update_room(room_id: int, payload: RoomUpdateIn, *, user: User) -> Room:
 
 def delete_room(room_id: int, *, user: User) -> None:
     room: Room = get_object_or_404(Room, pk=room_id)
-    IsOwner().check_object(user, room)
+    IsOwner(message='본인 소유의 숙소만 다룰 수 있습니다.').check_object(user, room)
     room.delete()
 
 

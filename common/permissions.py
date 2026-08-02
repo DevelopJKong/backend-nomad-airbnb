@@ -56,13 +56,24 @@ class IsHost(BasePermission):
 
 
 class IsOwner(BasePermission):
-    """객체의 owner가 본인인지 본다. 객체 수준 전용이라 has_permission은 통과시킨다."""
+    """객체의 소유자가 본인인지 본다. 객체 수준 전용이라 has_permission은 통과시킨다.
 
-    message = '본인 소유의 숙소만 다룰 수 있습니다.'
+    소유자 필드명은 모델마다 다르다 (Room.owner, Review.user). owner_field로 지정한다.
+
+        IsOwner().check_object(user, room)                        # room.owner_id
+        IsOwner('user_id', '내 리뷰만...').check_object(user, review)  # review.user_id
+    """
+
+    message = '본인 소유의 리소스만 다룰 수 있습니다.'
+
+    def __init__(self, owner_field: str = 'owner_id', message: str | None = None) -> None:
+        self.owner_field = owner_field
+        if message:
+            self.message = message
 
     def has_object_permission(self, user, obj) -> bool:
-        # owner_id로 비교하면 owner를 다시 조회하는 쿼리가 나가지 않는다
-        return bool(user and user.is_authenticated and obj.owner_id == user.pk)
+        # _id로 비교하면 소유자를 다시 조회하는 쿼리가 나가지 않는다
+        return bool(user and user.is_authenticated and getattr(obj, self.owner_field) == user.pk)
 
 
 def permission_classes(*permissions: BasePermission):

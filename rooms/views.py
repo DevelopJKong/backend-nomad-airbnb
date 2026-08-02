@@ -4,7 +4,18 @@ from ninja.security import django_auth
 from common.permissions import IsHost, permission_classes
 
 from . import services
-from .schemas import AmenityIn, AmenityOut, PagedRoomOut, ReviewOut, RoomIn, RoomOut, RoomPhotoOut, RoomUpdateIn
+from .schemas import (
+    AmenityIn,
+    AmenityOut,
+    PagedReviewOut,
+    PagedRoomOut,
+    ReviewOut,
+    RoomIn,
+    RoomOut,
+    RoomPhotoOut,
+    RoomReviewUpdateIn,
+    RoomUpdateIn,
+)
 
 router = Router()  # rooms 최상위 라우터
 amenity_router = Router()  # amenities 하위 라우터
@@ -25,15 +36,37 @@ def get_rooms_list(
     return services.get_rooms_list(page=page, page_size=page_size)
 
 
-@router.get('/{room_id}/reviews', response=list[ReviewOut], summary='')
+@router.get('/{room_id}/reviews', response=PagedReviewOut, summary='숙소 리뷰 목록 조회')
 def get_room_reviews(
     request,  # pyright: ignore[reportUnusedParameter]
     room_id: int,
     page: QueryEx[int, P(ge=1, description='1부터 시작하는 페이지 번호')] = 1,
     page_size: QueryEx[int, P(ge=1, le=50, description='한 페이지 개수 (최대 50)')] = 10,
 ):
-    """`room_id`에 해당하는 숙소 리뷰를 반환합니다."""
+    """`room_id`에 해당하는 숙소의 리뷰를 페이지 단위로 반환합니다. 숙소가 없으면 404."""
     return services.get_room_reviews(room_id, page=page, page_size=page_size)
+
+
+@router.get('/{room_id}/reviews/{review_id}', response=ReviewOut, summary='숙소 리뷰 상세 조회')
+def get_room_review(
+    request,  # pyright: ignore[reportUnusedParameter]
+    room_id: int,
+    review_id: int,
+):
+    """`room_id` 숙소에 달린 `review_id` 리뷰 한 건을 반환합니다.
+
+    해당 숙소의 리뷰가 아니면 404. 조회는 비로그인도 가능합니다.
+    """
+    return services.get_room_review(room_id, review_id)
+
+
+@router.put('/{room_id}/reviews/{review_id}', auth=django_auth, response=ReviewOut, summary='숙소 리뷰 수정')
+def update_room_review(request, room_id: int, review_id: int, payload: RoomReviewUpdateIn):
+    """리뷰 내용을 교체합니다(PUT).
+
+    비로그인 401, 작성자 본인이 아니면 403, 해당 숙소의 리뷰가 아니면 404.
+    """
+    return services.update_room_review(room_id, review_id, payload, user=request.auth)
 
 
 @router.post('/', auth=django_auth, response={201: RoomOut}, summary='숙소 생성')

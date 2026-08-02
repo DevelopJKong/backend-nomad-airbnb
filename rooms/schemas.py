@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from ninja import Schema
+from ninja import Field, Schema
 
 from categories.schemas import CategoryOut
 
@@ -116,3 +116,22 @@ class ReviewOut(Schema):
     user: OwnerOut
     room: RoomOut
     experience: str | None = None
+
+
+class PagedReviewOut(Schema):
+    """숙소 리뷰 목록의 페이지 응답."""
+
+    items: list[ReviewOut]
+    count: int
+    page: int
+    page_size: int
+
+
+class RoomReviewUpdateIn(Schema):
+    """숙소 리뷰 수정 입력.
+
+    대상 숙소는 URL의 room_id로, 작성자는 로그인 세션으로 정해지므로 본문에는 내용만 담는다.
+    """
+
+    payload: str
+    rating: int = Field(ge=1, le=5)
