@@ -44,6 +44,12 @@ skip-magic-trailing-comma = false
 select = ["E", "F", "I"]
 
 [tool.basedpyright]
+# pyright는 requires-python을 읽지 않고 "선택된 인터프리터"의 버전을 쓴다.
+# 에디터가 시스템 python(3.9)을 잡으면 `str | None` 문법이 에러가 나므로 버전을 명시로 고정한다.
+pythonVersion = "3.12"
+# 임포트 해석도 인터프리터 선택에 끌려다니지 않게 .venv로 못박는다.
+venvPath = "."
+venv = ".venv"
 # basedpyright 기본값은 매우 엄격(recommended)해서 Django에 안 맞는 노이즈가 많음.
 # 일반 pyright 수준(standard)으로 낮춰 의미 있는 진단만 남긴다.
 typeCheckingMode = "standard"
